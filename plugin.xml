@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        id="cordova-plugin-DConnectionErrorDetector" version="1.0.0">
+    <name>DConnectionErrorDetector</name>
+    <description>Connection Error Detector Plugin</description>
+    <license>MIT License</license>
+    <keywords>cordova,ios,connection,error</keywords>
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="DConnectionErrorDetector">
+                <param name="ios-package" onload="true" value="DConnectionErrorDetector"/>
+            </feature>
+        </config-file>
+        <source-file src="src/DConnectionErrorDetector.swift" />
+    </platform>
+</plugin>
