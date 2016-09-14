@@ -61,7 +61,7 @@ import WebKit
     }
     
     func handlePageError() {
-        NSNotificationCenter.defaultCenter().postNotificationName("DHIOverlaySetVisibleNotification", object: false)
+        NSNotificationCenter.defaultCenter().postNotificationName("DLoadingOverlaySetVisibleNotification", object: false)
         
         // Show alert dialog giving the user options
         let alertController = UIAlertController(title: "Connection lost", message: "Your connection has timed out.  This often occurs when internet connection is lost.  Please retry when you have reconnected.", preferredStyle: .Alert)
