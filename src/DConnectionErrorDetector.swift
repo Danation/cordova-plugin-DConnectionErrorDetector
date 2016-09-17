@@ -5,8 +5,13 @@ import WebKit
 @objc(DConnectionErrorDetector) class DConnectionErrorDetector : CDVPlugin {
     
     var timeoutTimer = NSTimer();
+    var homeUrl:String = "";
+    var timeoutSeconds:Double = 30;
     
     override func pluginInitialize() {
+        homeUrl = commandDelegate.settings["homeurl"] as! String;
+        timeoutSeconds = Double(commandDelegate.settings["timeoutseconds"] as! String)!;
+        
         NSNotificationCenter.defaultCenter().addObserver(self, selector: "pageDidLoad:", name: "CDVPageDidLoadNotification", object: nil)
         NSNotificationCenter.defaultCenter().addObserver(self, selector: "pageDidStart:", name: "CDVPluginResetNotification", object: nil)
     }
@@ -28,7 +33,7 @@ import WebKit
     
     func startTimeoutTimer() {
         print("Timeout timer started")
-        timeoutTimer = NSTimer.scheduledTimerWithTimeInterval(TIMEOUT_SECONDS, target: self, selector: "timerFired", userInfo: nil, repeats: false)
+        timeoutTimer = NSTimer.scheduledTimerWithTimeInterval(timeoutSeconds, target: self, selector: "timerFired", userInfo: nil, repeats: false)
     }
     
     func stopTimeoutTimer() {
@@ -69,10 +74,10 @@ import WebKit
         let cancelAction = UIAlertAction(title: "Home", style: .Cancel) { (action:UIAlertAction!) in
             print("User chose to navigate home")
             if (self.webView is UIWebView) {
-                (self.webView as! UIWebView).loadRequest(NSURLRequest(URL: NSURL(string: BASE_URL)!))
+                (self.webView as! UIWebView).loadRequest(NSURLRequest(URL: NSURL(string: self.homeUrl)!))
             }
             else if (self.webView is WKWebView) {
-                (self.webView as! WKWebView).loadRequest(NSURLRequest(URL: NSURL(string: BASE_URL)!))
+                (self.webView as! WKWebView).loadRequest(NSURLRequest(URL: NSURL(string: self.homeUrl)!))
             }
         }
         alertController.addAction(cancelAction)
