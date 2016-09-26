@@ -4,7 +4,7 @@ import WebKit
 
 @objc(DConnectionErrorDetector) class DConnectionErrorDetector : CDVPlugin {
     
-    var timeoutTimer = NSTimer();
+    var timeoutTimer = Timer();
     var homeUrl:String = "";
     var timeoutSeconds:Double = 30;
     
@@ -12,8 +12,8 @@ import WebKit
         homeUrl = commandDelegate.settings["homeurl"] as! String;
         timeoutSeconds = Double(commandDelegate.settings["timeoutseconds"] as! String)!;
         
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "pageDidLoad:", name: "CDVPageDidLoadNotification", object: nil)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "pageDidStart:", name: "CDVPluginResetNotification", object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(DConnectionErrorDetector.pageDidLoad), name: NSNotification.Name(rawValue: "CDVPageDidLoadNotification"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(DConnectionErrorDetector.pageDidStart), name: NSNotification.Name(rawValue: "CDVPluginResetNotification"), object: nil)
     }
     
     
@@ -26,64 +26,72 @@ import WebKit
             startTimeoutTimer();
         }
         else {
-            print("Not connected!")
+            print("Not connected!", terminator: "")
             handlePageError()
         }
     }
     
     func startTimeoutTimer() {
-        print("Timeout timer started")
-        timeoutTimer = NSTimer.scheduledTimerWithTimeInterval(timeoutSeconds, target: self, selector: "timerFired", userInfo: nil, repeats: false)
+        print("Timeout timer started", terminator: "")
+        timeoutTimer = Timer.scheduledTimer(timeInterval: timeoutSeconds, target: self, selector: #selector(DConnectionErrorDetector.timerFired), userInfo: nil, repeats: false)
     }
     
     func stopTimeoutTimer() {
-        print("Timeout timer stopped")
+        print("Timeout timer stopped", terminator: "")
         timeoutTimer.invalidate();
     }
     
     func timerFired() {
-        print("Page Timeout!");
+        print("Page Timeout!", terminator: "");
         handlePageError()
     }
     
     
     // Determines internet connectivity
-    // http://stackoverflow.com/a/30743763/1192877
+    // http://stackoverflow.com/a/25623647
     func isConnectedToNetwork() -> Bool {
         var zeroAddress = sockaddr_in()
-        zeroAddress.sin_len = UInt8(sizeofValue(zeroAddress))
+        zeroAddress.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
         zeroAddress.sin_family = sa_family_t(AF_INET)
-        let defaultRouteReachability = withUnsafePointer(&zeroAddress) {
-            SCNetworkReachabilityCreateWithAddress(nil, UnsafePointer($0))
-        }
-        var flags = SCNetworkReachabilityFlags()
-        if !SCNetworkReachabilityGetFlags(defaultRouteReachability!, &flags) {
+        
+        guard let defaultRouteReachability = withUnsafePointer(to: &zeroAddress, {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                SCNetworkReachabilityCreateWithAddress(nil, $0)
+            }
+        }) else {
             return false
         }
-        let isReachable = (flags.rawValue & UInt32(kSCNetworkFlagsReachable)) != 0
-        let needsConnection = (flags.rawValue & UInt32(kSCNetworkFlagsConnectionRequired)) != 0
+        
+        var flags: SCNetworkReachabilityFlags = []
+        if !SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags) {
+            return false
+        }
+        
+        let isReachable = flags.contains(.reachable)
+        let needsConnection = flags.contains(.connectionRequired)
+        
         return (isReachable && !needsConnection)
     }
     
     func handlePageError() {
-        NSNotificationCenter.defaultCenter().postNotificationName("DLoadingOverlaySetVisibleNotification", object: false)
+        NotificationCenter.default.post(name: NSNotification.Name(rawValue: "DLoadingOverlaySetVisibleNotification"), object: false)
         
         // Show alert dialog giving the user options
-        let alertController = UIAlertController(title: "Connection lost", message: "Your connection has timed out.  This often occurs when internet connection is lost.  Please retry when you have reconnected.", preferredStyle: .Alert)
+        let alertController = UIAlertController(title: "Connection lost", message: "Your connection has timed out.  This often occurs when internet connection is lost.  Please retry when you have reconnected.", preferredStyle: .alert)
         
-        let cancelAction = UIAlertAction(title: "Home", style: .Cancel) { (action:UIAlertAction!) in
-            print("User chose to navigate home")
+        let cancelAction = UIAlertAction(title: "Home", style: .cancel) { (action:UIAlertAction) in
+            print("User chose to navigate home", terminator: "")
             if (self.webView is UIWebView) {
-                (self.webView as! UIWebView).loadRequest(NSURLRequest(URL: NSURL(string: self.homeUrl)!))
+                (self.webView as! UIWebView).loadRequest(NSURLRequest(url: NSURL(string: self.homeUrl)! as URL) as URLRequest)
             }
             else if (self.webView is WKWebView) {
-                (self.webView as! WKWebView).loadRequest(NSURLRequest(URL: NSURL(string: self.homeUrl)!))
+                (self.webView as! WKWebView).load(NSURLRequest(url: NSURL(string: self.homeUrl)! as URL) as URLRequest)
             }
         }
         alertController.addAction(cancelAction)
         
-        let OKAction = UIAlertAction(title: "Retry", style: .Default) { (action:UIAlertAction!) in
-            print("User chose to retry request")
+        let OKAction = UIAlertAction(title: "Retry", style: .default) { (action:UIAlertAction) in
+            print("User chose to retry request", terminator: "")
             if (self.webView is UIWebView) {
                 (self.webView as! UIWebView).reload()
             }
@@ -93,6 +101,6 @@ import WebKit
         }
         alertController.addAction(OKAction)
         
-        self.viewController!.presentViewController(alertController, animated: true, completion:nil)
+        self.viewController!.present(alertController, animated: true, completion:nil)
     }
 }
