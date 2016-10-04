@@ -7,42 +7,44 @@ import WebKit
     var timeoutTimer = Timer();
     var homeUrl:String = "";
     var timeoutSeconds:Double = 30;
+    var pageDidStartNotification = Notification.Name("")
     
     override func pluginInitialize() {
+        pageDidStartNotification = Notification.Name("CDVPluginResetNotification")
         homeUrl = commandDelegate.settings["homeurl"] as! String;
         timeoutSeconds = Double(commandDelegate.settings["timeoutseconds"] as! String)!;
         
         NotificationCenter.default.addObserver(self, selector: #selector(DConnectionErrorDetector.pageDidLoad), name: NSNotification.Name(rawValue: "CDVPageDidLoadNotification"), object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(DConnectionErrorDetector.pageDidStart), name: NSNotification.Name(rawValue: "CDVPluginResetNotification"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(DConnectionErrorDetector.pageDidStart), name: pageDidStartNotification, object: nil)
     }
     
     
-    func pageDidLoad(notification : NSNotification) {
+    func pageDidLoad() {
         stopTimeoutTimer();
     }
     
-    func pageDidStart(notification : NSNotification) {
+    func pageDidStart() {
         if (isConnectedToNetwork()) {
             startTimeoutTimer();
         }
         else {
-            print("Not connected!", terminator: "")
+            print("Not connected!", terminator: "\n")
             handlePageError()
         }
     }
     
     func startTimeoutTimer() {
-        print("Timeout timer started", terminator: "")
+        print("Timeout timer started", terminator: "\n")
         timeoutTimer = Timer.scheduledTimer(timeInterval: timeoutSeconds, target: self, selector: #selector(DConnectionErrorDetector.timerFired), userInfo: nil, repeats: false)
     }
     
     func stopTimeoutTimer() {
-        print("Timeout timer stopped", terminator: "")
+        print("Timeout timer stopped", terminator: "\n")
         timeoutTimer.invalidate();
     }
     
     func timerFired() {
-        print("Page Timeout!", terminator: "");
+        print("Page Timeout!", terminator: "\n");
         handlePageError()
     }
     
@@ -80,7 +82,8 @@ import WebKit
         let alertController = UIAlertController(title: "Connection lost", message: "Your connection has timed out.  This often occurs when internet connection is lost.  Please retry when you have reconnected.", preferredStyle: .alert)
         
         let cancelAction = UIAlertAction(title: "Home", style: .cancel) { (action:UIAlertAction) in
-            print("User chose to navigate home", terminator: "")
+            print("User chose to navigate home", terminator: "\n")
+            NotificationCenter.default.post(name: self.pageDidStartNotification, object: nil)
             if (self.webView is UIWebView) {
                 (self.webView as! UIWebView).loadRequest(NSURLRequest(url: NSURL(string: self.homeUrl)! as URL) as URLRequest)
             }
@@ -91,7 +94,8 @@ import WebKit
         alertController.addAction(cancelAction)
         
         let OKAction = UIAlertAction(title: "Retry", style: .default) { (action:UIAlertAction) in
-            print("User chose to retry request", terminator: "")
+            print("User chose to retry request", terminator: "\n")
+            NotificationCenter.default.post(name: self.pageDidStartNotification, object: nil)
             if (self.webView is UIWebView) {
                 (self.webView as! UIWebView).reload()
             }
